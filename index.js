@@ -4,7 +4,9 @@ const express = require("express");
 const { Client, GatewayIntentBits } = require("discord.js");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+const PORT = Number(process.env.PORT) || 10000;
+const HOST = "0.0.0.0";
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
@@ -100,6 +102,7 @@ app.get("/", (req, res) => {
         status: "ok",
         botReady,
         cachedRoles: Object.keys(roleCache),
+        port: PORT,
     });
 });
 
@@ -133,7 +136,6 @@ app.get("/api/role-members/:roleId", async (req, res) => {
 
 app.post("/api/role-members/:roleId/refresh", async (req, res) => {
     const { roleId } = req.params;
-    console.log(`Manual refresh requested for role ${roleId}`);
 
     try {
         if (!botReady) {
@@ -167,8 +169,6 @@ client.once("ready", async () => {
     }
 
     setInterval(async () => {
-        console.log("Running scheduled role refresh...");
-
         for (const roleId of TRACKED_ROLE_IDS) {
             try {
                 await refreshRole(roleId);
@@ -192,19 +192,16 @@ client.on("shardError", (err) => {
     console.error("Discord shard error:", err);
 });
 
-async function start() {
-    loadCache();
+loadCache();
 
-    console.log("Logging into Discord...");
-    await client.login(DISCORD_TOKEN);
-    console.log("Discord login call completed.");
-
-    app.listen(PORT, () => {
-        console.log(`API running on port ${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+    console.log(`API running on http://${HOST}:${PORT}`);
+    console.log("Starting Discord login...");
+    client.login(DISCORD_TOKEN).catch((err) => {
+        console.error("Discord login failed:", err);
     });
-}
+});
 
-start().catch((err) => {
-    console.error("Fatal startup error:", err);
-    process.exit(1);
+server.on("error", (err) => {
+    console.error("Express server failed to start:", err);
 });
