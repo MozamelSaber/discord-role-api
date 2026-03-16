@@ -9,7 +9,6 @@ const PORT = process.env.PORT || 3000;
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
 
-// Put the role IDs you want cached here
 const TRACKED_ROLE_IDS = [
     "1470843290307006588",
 ];
@@ -27,8 +26,8 @@ const client = new Client({
 
 const CACHE_PATH = path.join(__dirname, "cache", "roles.json");
 let roleCache = {};
+let botReady = false;
 
-// Load cache on startup
 function loadCache() {
     try {
         if (!fs.existsSync(CACHE_PATH)) {
@@ -96,21 +95,25 @@ async function refreshRole(roleId) {
     return roleCache[roleId];
 }
 
-// Health route
 app.get("/", (req, res) => {
     res.json({
         status: "ok",
-        botReady: client.isReady(),
+        botReady,
         cachedRoles: Object.keys(roleCache),
     });
 });
 
-// Get role members
 app.get("/api/role-members/:roleId", async (req, res) => {
     const { roleId } = req.params;
     console.log(`Incoming request for role ${roleId}`);
 
     try {
+        if (!botReady) {
+            return res.status(503).json({
+                error: "Bot is not ready yet. Try again in a few seconds.",
+            });
+        }
+
         if (roleCache[roleId]) {
             console.log(`Returning cached data for role ${roleId}`);
             return res.json(roleCache[roleId]);
@@ -128,12 +131,17 @@ app.get("/api/role-members/:roleId", async (req, res) => {
     }
 });
 
-// Manual refresh
 app.post("/api/role-members/:roleId/refresh", async (req, res) => {
     const { roleId } = req.params;
     console.log(`Manual refresh requested for role ${roleId}`);
 
     try {
+        if (!botReady) {
+            return res.status(503).json({
+                error: "Bot is not ready yet. Try again in a few seconds.",
+            });
+        }
+
         const data = await refreshRole(roleId);
         return res.json(data);
     } catch (err) {
@@ -147,6 +155,7 @@ app.post("/api/role-members/:roleId/refresh", async (req, res) => {
 
 client.once("ready", async () => {
     console.log(`Logged in as ${client.user.tag}`);
+    botReady = true;
 
     for (const roleId of TRACKED_ROLE_IDS) {
         try {
@@ -171,14 +180,28 @@ client.once("ready", async () => {
     }, 5 * 60 * 1000);
 });
 
+client.on("error", (err) => {
+    console.error("Discord client error:", err);
+});
+
+client.on("warn", (msg) => {
+    console.warn("Discord client warning:", msg);
+});
+
+client.on("shardError", (err) => {
+    console.error("Discord shard error:", err);
+});
+
 async function start() {
     loadCache();
+
+    console.log("Logging into Discord...");
+    await client.login(DISCORD_TOKEN);
+    console.log("Discord login call completed.");
 
     app.listen(PORT, () => {
         console.log(`API running on port ${PORT}`);
     });
-
-    await client.login(DISCORD_TOKEN);
 }
 
 start().catch((err) => {
