@@ -1,0 +1,26 @@
+{
+  "name": "discord-role-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MozamelSaber/discord-role-api.git"
+  },
+  "private": true,
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/MozamelSaber/discord-role-api/issues"
+  },
+  "homepage": "https://github.com/MozamelSaber/discord-role-api#readme",
+  "dependencies": {
+    "discord.js": "^13.17.1",
+    "express": "^5.2.1"
+  }
+}
